@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/scaleway/scaleway-cli/internal/args"
+
 	"github.com/scaleway/scaleway-sdk-go/logger"
 	"github.com/scaleway/scaleway-sdk-go/strcase"
 	"github.com/scaleway/scaleway-sdk-go/validation"
@@ -34,6 +35,7 @@ func DefaultCommandValidateFunc() CommandValidateFunc {
 // validateArgValues validates values passed to the different args of a Command.
 func validateArgValues(cmd *Command, cmdArgs interface{}) error {
 	for _, argSpec := range cmd.ArgSpecs {
+
 		fieldName := strings.ReplaceAll(strcase.ToPublicGoName(argSpec.Name), ".{idx}", "")
 		fieldName = strings.ReplaceAll(fieldName, ".{key}", "")
 		fieldValue, fieldExists := getValueForFieldByName(cmdArgs, fieldName)
@@ -41,10 +43,17 @@ func validateArgValues(cmd *Command, cmdArgs interface{}) error {
 			logger.Warningf("could not validate arg value for '%v': invalid fieldName: %v", argSpec.Name, fieldName)
 			continue
 		}
+
+		if argSpec.Required == false && !(!fieldValue.IsNil() || !fieldValue.IsZero() || fieldValue.Interface() != "") {
+			return nil
+		}
+
 		validateFunc := DefaultArgSpecValidateFunc()
 		if argSpec.ValidateFunc != nil {
 			validateFunc = argSpec.ValidateFunc
 		}
+		logger.Debugf("validateArgValues(): argspec=%v, value=%v", argSpec.Name, fieldValue.Interface())
+
 		err := validateFunc(argSpec, fieldValue.Interface())
 		if err != nil {
 			return err
@@ -71,6 +80,9 @@ func validateRequiredArgs(cmd *Command, cmdArgs interface{}) error {
 // Uses ArgSpec.EnumValues
 func DefaultArgSpecValidateFunc() ArgSpecValidateFunc {
 	return func(argSpec *ArgSpec, value interface{}) error {
+
+		logger.Debugf("value: '%v'", value)
+
 		if len(argSpec.EnumValues) < 1 {
 			return nil
 		}
@@ -79,7 +91,10 @@ func DefaultArgSpecValidateFunc() ArgSpecValidateFunc {
 		if err != nil {
 			return err
 		}
-		if !stringExists(argSpec.EnumValues, strValue) {
+
+		logger.Debugf("strValue: '%v'", strValue)
+
+		if !stringExists(argSpec.EnumValues, strValue) /*&& strValue != "" && argSpec.Required == false*/ {
 			return InvalidValueForEnumError(argSpec.Name, argSpec.EnumValues, strValue)
 		}
 		return nil

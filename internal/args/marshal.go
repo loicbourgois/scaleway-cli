@@ -67,14 +67,19 @@ func MarshalValue(data interface{}) (string, error) {
 		tmp.Elem().Set(src)
 		src = tmp
 	}
+
 	m, err := marshal(src, nil)
 	if err != nil {
 		return "", err
 	}
 
+	/*if len(m) == 0 {
+		return "", nil
+	}*/
+
 	// If we do not get a single key this is probably because we try to marshal a struct
 	if len(m) != 1 {
-		return "", fmt.Errorf("data must be a marshable value (a scalar type or a Marshaler)")
+		return "", fmt.Errorf("data must be a marshable value (a scalar type or a Marshaler): %v", m)
 	}
 
 	return m[0], nil
